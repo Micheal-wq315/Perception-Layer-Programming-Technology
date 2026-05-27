@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>感知层编程技术 · 逐章题库</title>
+<style>
+:root{
+  --bg:#0c0e14; --surface:#131620; --border:#1e2130;
+  --text:#e2e4eb; --muted:#7b7f92; --accent:#7b93f5;
+  --green:#34d399; --red:#f87171; --amber:#fbbf24;
+  --radius:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);min-height:100svh;line-height:1.65;
+  overflow-x:hidden;
+}
+
+.hero{
+  padding:56px 24px 48px;text-align:center;
+  background:radial-gradient(ellipse 60% 50% at 50% 0%, rgba(123,147,245,.08) 0%, transparent 70%);
+  border-bottom:1px solid var(--border);
+}
+.hero h1{font-size:30px;font-weight:800;letter-spacing:-.5px}
+.hero p{color:var(--muted);font-size:15px;margin-top:8px;max-width:520px;margin-left:auto;margin-right:auto}
+
+.wrap{max-width:700px;margin:0 auto;padding:0 20px 80px}
+
+/* chapter picker */
+.chapter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin:28px 0 10px}
+.chapter-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 12px;cursor:pointer;text-align:center;transition:all .2s;
+  user-select:none;
+}
+.chapter-card:hover{border-color:var(--accent);background:rgba(123,147,245,.06)}
+.chapter-card.active{border-color:var(--accent);background:rgba(123,147,245,.1);box-shadow:0 0 0 2px rgba(123,147,245,.15)}
+.chapter-card .ch-num{font-size:22px;font-weight:800;color:var(--accent)}
+.chapter-card .ch-title{font-size:12px;color:var(--muted);margin-top:4px}
+.chapter-card .ch-count{font-size:11px;color:var(--muted);margin-top:2px;opacity:.7}
+
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+/* question area */
+.quiz-section{display:none}
+.quiz-section.visible{display:block}
+
+.progress-row{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.progress-bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .35s}
+.progress-label{font-size:13px;color:var(--muted);white-space:nowrap;min-width:60px;text-align:right}
+
+.q-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 28px 24px}
+.q-header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.q-badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px}
+.q-badge.single{background:rgba(123,147,245,.15);color:var(--accent)}
+.q-badge.multi{background:rgba(251,191,36,.15);color:var(--amber)}
+.q-idx{font-size:13px;color:var(--muted)}
+.q-stem{font-size:16px;line-height:1.8;margin:16px 0 20px;font-weight:500}
+
+.options{display:flex;flex-direction:column;gap:10px}
+.opt-btn{
+  display:flex;align-items:flex-start;gap:12px;padding:14px 16px;
+  border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .18s;
+  background:transparent;color:var(--text);font-size:14px;text-align:left;width:100%;
+  font-family:inherit;
+}
+.opt-btn:hover{border-color:var(--accent);background:rgba(123,147,245,.05)}
+.opt-btn.picked{border-color:var(--accent);background:rgba(123,147,245,.1)}
+.opt-letter{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;transition:all .18s}
+.opt-btn.picked .opt-letter{border-color:var(--accent);background:var(--accent);color:#fff}
+.opt-text{flex:1;padding-top:2px}
+
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px}
+.nav-btn{
+  padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);
+  transition:all .2s;font-family:inherit;
+}
+.nav-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.nav-btn:disabled{opacity:.35;cursor:default}
+
+.nav-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.nav-btn.primary:hover:not(:disabled){filter:brightness(1.12)}
+
+.q-counter{font-size:13px;color:var(--muted);text-align:center}
+
+/* result page */
+.result-page{display:none;text-align:center;padding:40px 0}
+.result-page.visible{display:block}
+.big-ring{width:140px;height:140px;border-radius:50%;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;position:relative}
+.big-ring .score-num{font-size:44px;font-weight:800;z-index:1}
+.big-ring canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.result-grade{font-size:18px;font-weight:700;margin-bottom:6px}
+.result-msg{color:var(--muted);font-size:14px;max-width:400px;margin:0 auto 20px}
+.review-list{text-align:left;margin-top:20px}
+.review-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.review-item .ri-mark{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.ri-mark.ok{background:rgba(52,211,153,.15);color:var(--green)}
+.ri-mark.err{background:rgba(248,113,113,.15);color:var(--red)}
+
+.back-btn{margin-top:24px;display:inline-flex;align-items:center;gap:6px;padding:12px 28px;border-radius:8px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+.back-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* picker hint */
+.pick-hint{text-align:center;color:var(--muted);font-size:14px;padding:60px 0}
+.pick-hint span{color:var(--accent)}
+
+@media(max-width:500px){
+  .hero h1{font-size:22px}
+  .chapter-grid{grid-template-columns:repeat(3,1fr)}
+  .q-box{padding:20px 16px}
+  .nav-btn{padding:10px 16px;font-size:13px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>感知层编程技术</h1>
+  <p>选择章节，逐题练习。每章单选题 + 多选题，提交后自动判分。</p>
+</div>
+
+<div class="wrap">
+
+  <div id="picker">
+    <div class="chapter-grid" id="chapterGrid"></div>
+    <div class="pick-hint">👆 <span>点击上方章节卡片</span>开始答题</div>
+  </div>
+
+  <div class="quiz-section" id="quizSection">
+    <div class="progress-row">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-label" id="progressLabel">1/10</span>
+    </div>
+    <div class="q-box">
+      <div class="q-header">
+        <span class="q-badge single" id="qBadge">单选题</span>
+        <span class="q-idx" id="qIdx"></span>
+      </div>
+      <div class="q-stem" id="qStem"></div>
+      <div class="options" id="qOptions"></div>
+    </div>
+    <div class="nav-row">
+      <button class="nav-btn" id="prevBtn" onclick="prevQ()">← 上一题</button>
+      <span class="q-counter" id="qCounter"></span>
+      <button class="nav-btn primary" id="nextBtn" onclick="nextQ()">下一题 →</button>
+    </div>
+    <div class="nav-row" style="justify-content:center;margin-top:8px">
+      <button class="nav-btn primary" id="submitBtn" onclick="submitChapter()" style="display:none;width:100%;max-width:300px">📝 提交本章答案</button>
+    </div>
+  </div>
+
+  <div class="result-page" id="resultPage">
+    <div class="big-ring" id="bigRing">
+      <canvas id="ringCanvas" width="140" height="140"></canvas>
+      <span class="score-num" id="scoreNum">0</span>
+    </div>
+    <div class="result-grade" id="resultGrade"></div>
+    <div class="result-msg" id="resultMsg"></div>
+    <div class="review-list" id="reviewList"></div>
+    <button class="back-btn" onclick="goBack()">← 返回章节选择</button>
+    <button class="back-btn" onclick="retryChapter()" style="margin-left:8px">🔄 重做本章</button>
+  </div>
+
+</div>
+
+<script>
+// ==================== QUESTION BANK ====================
+const Q = (c,t,o,a,h)=> ({chapter:c,type:t,opts:o,answer:a,hint:h||''});
+
+const chapters = {
+  1:{ title:'概述', questions:[
+    Q(1,'single',['A. 三层','B. 四层','C. 五层','D. 七层'],1,'感知层→传输层→平台层→应用层，共四层'),
+    Q(1,'single',['A. 信息感知','B. 身份识别','C. 数据加密传输','D. 边缘计算'],2,'加密传输是安全/传输层的事'),
+    Q(1,'single',['A. 物理层与MAC层','B. 设备层与接入层','C. 网络层与传输层','D. 平台层与应用层'],1,'感知层内部再分设备层和接入层'),
+    Q(1,'single',['A. 感知层','B. 传输层','C. 平台层','D. 接入层'],2,'网络层之上是平台层'),
+    Q(1,'single',['A. 极致的功耗控制','B. 丰富的计算与存储资源','C. 复杂的部署环境','D. 成本与可靠性要求'],1,'感知层恰恰资源受限！'),
+    Q(1,'single',['A. OSAL(1-2KB)','B. μC/OS-II(5KB+)','C. FreeRTOS(2-3KB)','D. RT-Thread(4-6KB)'],0,'OSAL最轻量，ZigBee专用'),
+    Q(1,'single',['A. CC2530','B. CC2652R','C. ESP32-H2','D. EFR32MG24'],3,'EFR32MG24 灵敏度-102.7dBm，功耗3.8/4.6mA最优'),
+    Q(1,'multi',['A. 信息感知','B. 位置定位','C. 身份识别','D. 环境控制','E. 边缘计算'],[0,1,2,3,4],'五大使命全选'),
+    Q(1,'multi',['A. 感知层负责数据采集与初步处理','B. 传输层仅负责有线通信','C. 平台层负责数据的汇聚、清洗、存储与开放','D. 应用层直接面向具体业务场景','E. 感知层的技术实现直接决定了上层应用的性能上限'],[0,2,3,4],'B错——传输层还负责WiFi/5G等无线方式'),
+    Q(1,'multi',['A. 硬件原理理解','B. 操作系统机制','C. 无线通信协议','D. 前端界面设计','E. 软硬件协同设计思维'],[0,1,2,4],'D是干扰项，感知层不需要前端技能'),
+    Q(1,'multi',['A. OSAL采用协作式调度，不支持抢占','B. OSAL的RAM占用最小(1-2KB)','C. μC/OS-II的任务切换最快(5μs)','D. FreeRTOS支持同优先级时间片轮转','E. RT-Thread协议栈支持最完整'],[0,1,2,3,4],'全部正确，PPTX第17-18页核心结论'),
+    Q(1,'multi',['A. ZigBee和Thread都使用IEEE 802.15.4作为物理层和MAC层','B. Thread是唯一原生支持IPv6的协议','C. BLE-Mesh可以直接被手机连接，无需网关','D. 4跳场景下Thread延迟(30-80ms)低于ZigBee(50-100ms)','E. 三种协议都支持星型树型Mesh拓扑'],[0,1,2,3],'E错——仅ZigBee支持三种拓扑'),
+  ]},
+  2:{ title:'开发环境与工具链', questions:[
+    Q(2,'single',['A. 目标硬件性能不足','B. 主机与目标机指令集架构不同','C. 调试器只支持主机平台','D. 操作系统必须运行在主机上'],1,'主机(x86)和目标机(8051)指令集不同'),
+    Q(2,'single',['A. .ewd','B. .dep','C. .ewp','D. Debug目录'],2,'.ewp存储编译配置和芯片选项，应提交Git'),
+    Q(2,'single',['A. 编译器','B. 汇编器','C. 链接器','D. 加载器'],1,'汇编器把汇编代码转成机器码'),
+    Q(2,'single',['A. 支持设置代码断点','B. 支持条件断点','C. 所有中断标志在进入调试后自动清除','D. 支持Watch窗口观察变量'],2,'并非所有中断标志都自动清除'),
+    Q(2,'single',['A. 网络密钥','B. 设备MAC地址','C. PAN ID','D. 信道号'],0,'Wireshark解ZigBee加密需提供网络密钥'),
+    Q(2,'single',['A. CC2530 USB Dongle','B. Packet Sniffer','C. SmartRF04EB','D. J-Link'],3,'J-Link是通用调试器，不是TI的ZigBee抓包工具'),
+    Q(2,'multi',['A. 编译器','B. 汇编器','C. 链接器','D. 调试器(gdb)','E. 烧录工具'],[0,1,2,3],'交叉编译工具链四核心组件'),
+    Q(2,'multi',['A. .eww记录工作空间中包含哪些工程','B. .ewp存储编译选项和芯片配置','C. .ewd必须提交Git以便团队共享断点','D. .dep由IDE自动生成，记录文件依赖','E. Debug目录应加入.gitignore'],[0,1,3,4],'C错——.ewd存储个人调试设置，不应提交Git'),
+    Q(2,'multi',['A. 检查调用堆栈','B. 检查程序计数器(PC)','C. 检查堆栈指针(SP)','D. 使用反汇编窗口分析','E. 重新上电'],[0,1,2,3],'重新上电只是绕过问题，不是调试方法'),
+    Q(2,'multi',['A. Wireshark','B. TI Packet Sniffer','C. Ubiqua','D. Keil MDK','E. SmartRF Flash Programmer'],[0,1,2],'Keil MDK是IDE，SmartRF Flash Programmer是烧录工具'),
+  ]},
+  3:{ title:'微控制器基础', questions:[
+    Q(3,'single',['A. 微控制器通常资源受限','B. 微控制器对实时性要求较低','C. 微控制器通常集成了特定外设','D. 微控制器设计需考虑低功耗'],1,'微控制器恰恰对实时性要求更高'),
+    Q(3,'single',['A. int x = 10;','B. P1_0 = 1;','C. if (a > b) { ... }','D. while(1);'],1,'P1_0=1直接写寄存器控制引脚电平'),
+    Q(3,'single',['A. 中断只能由外部硬件事件触发','B. 中断响应后CPU不会保存当前状态','C. 中断服务程序应尽量短小精悍','D. 同优先级中断可以互相嵌套'],2,'ISR"短平快"原则是核心考点'),
+    Q(3,'single',['A. 哈佛结构不支持中断','B. 哈佛结构将指令存储器和数据存储器分离','C. 冯·诺依曼结构只能顺序执行','D. 哈佛结构功耗更低'],1,'哈佛结构的核心特征是指令/数据分离'),
+    Q(3,'single',['A. 初始化栈指针','B. 清零.bss段','C. 复制.data段','D. 跳转到main函数'],2,'.data段=已初始化全局变量从Flash→RAM'),
+    Q(3,'single',['A. 启动代码用于固件升级，引导程序用于建立C运行环境','B. 启动代码是每个C程序必需的，引导程序仅在需要OTA时才存在','C. 两者功能完全相同','D. 引导程序由编译器自动提供'],1,'启动代码建立C环境,Bootloader负责固件升级/OTA'),
+    Q(3,'multi',['A. 资源受限','B. 实时性要求高','C. 多用户分时操作系统','D. 低功耗设计','E. 专用性优化'],[0,1,3,4],'C错-MCU不用多用户分时系统'),
+    Q(3,'multi',['A. 降低CPU负载','B. 降低系统功耗','C. 响应延迟更短且确定','D. 无需配置中断优先级','E. 能够同时处理多个中断'],[0,1,2],'中断仍需配优先级，同时处理能力有限'),
+    Q(3,'multi',['A. 初始化栈指针(SP)','B. 初始化已初始化全局变量(.data段)','C. 清零未初始化全局变量(.bss段)','D. 配置外设时钟','E. 跳转至main函数'],[0,1,2,4],'启动代码四步：SP→.data→.bss→main'),
+    Q(3,'multi',['A. 程序存储器和数据存储器物理上分开','B. 支持在一个时钟周期内同时取指和访存','C. 所有变量都必须存放在DATA空间','D. 指令执行时间更可预测','E. CODE和DATA共用同一组总线'],[0,1,3],'C错-XDATA也可存变量；E错-哈佛结构总线分离'),
+  ]},
+  4:{ title:'CC2530硬件架构', questions:[
+    Q(4,'single',['A. 单时钟周期指令','B. 第二个数据指针(DPTR1)','C. 扩展的中断系统(18个中断源)','D. 内置浮点运算单元'],3,'CC2530的8051无硬件浮点单元'),
+    Q(4,'single',['A. CODE','B. DATA','C. XDATA','D. SFR'],2,'XDATA用于DMA和大容量数据访问'),
+    Q(4,'single',['A. SFR空间只能通过XDATA地址访问','B. DATA空间的高128字节只能间接寻址','C. CODE空间只能映射Flash','D. XDATA空间只能访问外部RAM'],1,'高128字节与SFR地址重叠，必须间接寻址'),
+    Q(4,'single',['A. 所有中断标志均由硬件自动清除','B. 仅阴影框标志由硬件清除，非阴影框需软件清除','C. 所有标志都需软件清除','D. 只有全局中断标志需软件清除'],1,'关键区分：阴影框=硬件清，非阴影框=软件清'),
+    Q(4,'single',['A. IP1=1,IP0=1','B. IP1=0,IP0=1','C. IP1=1,IP0=0','D. IP1=0,IP0=0'],0,'IP1=1,IP0=1 → 级别3(最高)'),
+    Q(4,'single',['A. 32MHz晶体振荡器','B. 16MHz RC振荡器','C. 睡眠定时器与选定的32kHz振荡器','D. 数字稳压器'],2,'PM2仅保留32kHz和睡眠定时器'),
+    Q(4,'single',['A. 每页大小为2KB','B. 擦写寿命约为20000次','C. 信息页可被用户擦除改写','D. 支持预取功能提升代码执行速度'],2,'信息页面是只读的，不可擦除'),
+    Q(4,'multi',['A. CODE','B. DATA','C. XDATA','D. SFR','E. XREG'],[1,3],'DATA和SFR支持单周期访问'),
+    Q(4,'multi',['A. 单时钟周期指令','B. 第二个数据指针(DPTR1)','C. 18个中断源','D. 内置硬件乘法器','E. 支持32位指令'],[0,1,2],'无乘法器无32位指令'),
+    Q(4,'multi',['A. 共6个中断优先级组(IPG0-IPG5)','B. 每组由IP1_x和IP0_x两位编码4个级别','C. 正在执行的ISR可被同优先级中断打断','D. 同优先级同时发生按固定轮询顺序','E. 中断嵌套仅发生在更高优先级中断到达时'],[0,1,3,4],'C错-同优先级不打断'),
+    Q(4,'multi',['A. 活动模式','B. 空闲模式','C. PM1','D. PM2','E. PM3'],[0,1,2,3,4],'CC2530五种供电模式全选'),
+  ]},
+  5:{ title:'CC2530片内外设', questions:[
+    Q(5,'single',['A. P1SEL|=0x04;P1DIR|=0x04;P1_2=1','B. P1SEL&=~0x04;P1DIR|=0x04;P1_2=1','C. P1SEL&=~0x04;P1DIR&=~0x04;P1_2=1','D. P1SEL|=0x04;P1DIR&=~0x04;P1_2=1'],1,'GPIO模式→P1SEL清0；输出→P1DIR置1'),
+    Q(5,'single',['A. 通信双方需要共享时钟线','B. 每帧数据必须以高电平起始','C. 波特率是比特时间的倒数','D. 数据位传输默认为MSB优先'],2,'波特率=1/比特时间'),
+    Q(5,'single',['A. 自由运行模式','B. 模计数模式','C. 上下计数模式','D. 单次计数模式'],1,'模计数模式生成边沿对齐PWM'),
+    Q(5,'single',['A. 支持单端输入和差分输入','B. 最高有效位数为14位','C. 转换时间与抽取率成正比','D. 支持内部温度传感器测量'],1,'CC2530 ADC最高12位ENOB，不是14位'),
+    Q(5,'single',['A. 中断向量表','B. 描述符','C. 缓冲区','D. 寄存器组'],1,'DMA通过8字节描述符结构体配置'),
+    Q(5,'single',['A. 数据开始发送时','B. 数据从发送缓冲器加载到移位寄存器后','C. 数据发送完成后','D. 接收端返回确认后'],1,'TX中断在缓冲器→移位寄存器时触发'),
+    Q(5,'single',['A. 上拉输入','B. 下拉输入','C. 推挽输出','D. 开漏输出'],2,'CC2530 GPIO输入模式=上拉/下拉/高阻，推挽是输出'),
+    Q(5,'multi',['A. 上拉输入','B. 下拉输入','C. 推挽输入','D. 高阻输入','E. 开漏输入'],[0,1,3],'CC2530输入模式：上拉/下拉/高阻(三态)'),
+    Q(5,'multi',['A. 可以测量外部信号的脉冲宽度','B. 可以记录外部事件发生的精确时刻','C. 捕获边沿可配置为上升沿下降沿或双边沿','D. 捕获值存储在T1CCn寄存器中','E. 每次捕获都会自动清零计数器'],[0,1,2,3],'E错-捕获不自动清零计数器'),
+    Q(5,'multi',['A. 分辨率','B. 转换误差','C. 采样率','D. 有效位数(ENOB)','E. 输出阻抗'],[0,1,2,3],'ADC四大指标'),
+    Q(5,'multi',['A. 单次传输','B. 块传输','C. 重复单次传输','D. 重复块传输','E. 循环冗余传输'],[0,1,2,3],'DMA四种传输模式，循环冗余不是'),
+    Q(5,'multi',['A. 高效率','B. 控制精度高','C. 数字精确性与一致性','D. 抗干扰能力强','E. 易于系统集成'],[0,1,2,3,4],'PWM五大优势全选'),
+  ]},
+  6:{ title:'实时操作系统基础', questions:[
+    Q(6,'single',['A. 中断控制器','B. 调度器','C. 内存管理单元','D. 文件系统'],1,'调度器从就绪队列选下一个任务'),
+    Q(6,'single',['A. 偶尔错过截止时间可以接受','B. 必须保证关键任务在截止时间前完成','C. 只适用于非关键应用','D. 不需要任务调度'],1,'硬实时=绝对不能错过截止时间'),
+    Q(6,'single',['A. 先来先服务(FCFS)','B. 时间片轮转(RR)','C. 优先级调度','D. 短作业优先(SJF)'],2,'优先级调度是RTOS最核心策略'),
+    Q(6,'single',['A. 高优先级等待低优先级占用的资源，低优先级被中优先级抢占','B. 两个同优先级任务互相等待','C. 低优先级被高优先级无限抢占','D. ISR长时间运行'],0,'优先级反转的经典场景'),
+    Q(6,'single',['A. 应优先使用动态内存分配','B. 静态内存分配会产生内存碎片','C. 内存池管理兼具灵活性和确定性','D. 虚拟内存是物联网OS必备功能'],2,'内存池=无碎片+确定性分配'),
+    Q(6,'single',['A. 确定性行为','B. 基于优先级的可抢占调度','C. 精简高效的内核','D. 支持多用户分时'],3,'多用户分时是通用OS特征，不是RTOS'),
+    Q(6,'multi',['A. 处理器管理','B. 内存管理','C. 设备管理','D. 文件管理','E. 电源管理'],[0,1,2,3],'OS四大资源管理功能'),
+    Q(6,'multi',['A. 可预测的响应时间','B. 支持优先级抢占','C. 内核代码精简','D. 支持虚拟内存','E. 提供确定性的同步机制'],[0,1,2,4],'D错-RTOS通常无虚拟内存'),
+    Q(6,'multi',['A. 单调速率调度(RMS)','B. 最早截止时间优先(EDF)','C. 先来先服务(FCFS)','D. 时间片轮转(RR)','E. 最短剩余时间优先(SRTN)'],[0,1],'RMS和EDF是实时调度算法核心'),
+    Q(6,'multi',['A. 资源占用(ROM/RAM)','B. 实时性要求','C. 协议栈支持','D. 社区活跃度','E. 许可协议'],[0,1,2,3,4],'物联网OS选型五要素全选'),
+  ]},
+  7:{ title:'OSAL操作系统抽象层', questions:[
+    Q(7,'single',['A. OSAL是一个功能完整的RTOS内核','B. OSAL采用抢占式任务调度','C. OSAL是为ZigBee协议栈设计的轻量级任务调度框架','D. OSAL支持动态创建和销毁任务'],2,'OSAL=事件驱动+轮询调度，非抢占'),
+    Q(7,'single',['A. 全局变量','B. 事件标志','C. 消息队列','D. 信号量'],2,'OSAL通过消息队列传递带数据的消息'),
+    Q(7,'single',['A. osal_init_system()','B. osal_run_system()','C. osal_start_timerEx()','D. osal_set_event()'],1,'osal_run_system()是OSAL主循环'),
+    Q(7,'single',['A. 每个任务的事件标志是16位整数','B. 可通过osal_set_event()设置其他任务的事件','C. 事件可以携带附加数据','D. 任务通过检查事件标志位判断是否有事件'],2,'事件本身不携带数据，需配合消息机制'),
+    Q(7,'single',['A. 直接使用不需要释放','B. 必须调用osal_msg_deallocate()释放','C. 由系统自动回收','D. 调用free()释放'],1,'消息必须手动释放，否则内存泄漏'),
+    Q(7,'single',['A. 硬件自动重载','B. 每次超时后由软件重新启动','C. 通过reloadTimeout字段自动重载','D. 不支持周期性定时器'],2,'周期性定时器靠软件每次超时后重新启动'),
+    Q(7,'single',['A. 任务可以在运行时动态创建','B. 所有任务在osalInitTasks()中静态配置','C. 任务数量可以无限增加','D. 任务初始化函数必须由用户手动调用'],1,'OSAL任务在编译时静态定义，不可动态创建'),
+    Q(7,'single',['A. osal_start_timer()','B. osal_start_timerEx()','C. osal_set_timer()','D. osal_timer_start()'],1,'osal_start_timerEx启动带任务ID的定时器'),
+    Q(7,'single',['A. 消息的长度','B. 发送任务ID','C. 目标任务ID','D. 消息类型'],2,'dest_id=目标任务ID，决定消息投递目标'),
+    Q(7,'single',['A. 每次事件循环结束后','B. 所有任务都没有待处理事件时','C. 定时器超时时','D. 消息发送后'],1,'所有任务无事件时才进入低功耗'),
+    Q(7,'single',['A. OSAL支持优先级继承','B. FreeRTOS不支持消息队列','C. OSAL无抢占式调度','D. FreeRTOS内存占用比OSAL更小'],2,'OSAL核心特征=无抢占式调度'),
+    Q(7,'single',['A. 任务发生了错误','B. 有未处理的事件需要保留','C. 任务需要被删除','D. 系统需要复位'],1,'返回值非零→未处理事件重新设置到tasksEvents'),
+    Q(7,'multi',['A. 无优先级抢占，采用轮询调度','B. 不支持信号量互斥量等同步原语','C. 支持动态任务创建','D. 事件标志位宽度较小(16位)','E. 内存管理采用内存池'],[0,1,3,4],'C错-OSAL任务静态定义不支持动态创建'),
+    Q(7,'multi',['A. 表示任务是否处理了所有事件','B. 返回值中未处理事件位会被重新设置到tasksEvents','C. 返回值为0表示所有事件都已处理','D. 返回值与任务运行状态无关','E. 返回值决定是否进入低功耗模式'],[0,1,2],'D/E错'),
+    Q(7,'multi',['A. osal_msg_allocate()分配消息内存','B. osal_msg_send()发送消息','C. osal_msg_receive()接收消息','D. osal_msg_deallocate()释放消息','E. osal_msg_wait()等待消息'],[0,1,2,3],'OSAL无osal_msg_wait函数'),
+    Q(7,'multi',['A. 资源极其有限的8/16位微控制器','B. 任务数量固定结构明确的无线传感网络','C. 对功耗敏感需长时间电池供电的设备','D. 需要复杂多任务调度和优先级管理','E. 开发团队熟悉事件驱动编程模型'],[0,1,2,4],'D错-复杂调度不是OSAL强项'),
+    Q(7,'multi',['A. MAC层事件处理','B. 网络层事件处理','C. 硬件抽象层事件处理','D. 应用支持子层事件处理','E. ZDO事件处理'],[0,1,2,3,4],'Z-Stack的tasksArr通常包含这五类任务'),
+    Q(7,'multi',['A. 使用静态堆数组','B. 采用首次适应算法','C. 支持小块内存快速分配','D. 释放时立即合并相邻空闲块','E. 无外部碎片'],[0,1,2,4],'D错-OSAL内存管理不立即合并相邻块'),
+  ]},
+  8:{ title:'通信分层架构', questions:[
+    Q(8,'single',['A. 高度模块化','B. 各层可独立设计优化甚至替换','C. 减少了协议栈的总代码量','D. 简化了设计过程'],2,'分层会增加一定的代码开销'),
+    Q(8,'single',['A. 物理层','B. MAC层','C. 网络层','D. 传输层'],2,'网络层负责多跳路由和中继'),
+    Q(8,'single',['A. 请求原语由下层向上层发出','B. 指示原语由上层向下层发出','C. 确认原语用于下层向上层确认请求已完成','D. 响应原语用于上层主动向下层发送数据'],2,'确认原语=下层→上层确认操作完成'),
+    Q(8,'single',['A. PD-DATA.request','B. PD-DATA.indication','C. PD-DATA.confirm','D. PLME-CCA.request'],0,'MAC请求PHY发送数据=PD-DATA.request'),
+    Q(8,'single',['A. ZigBee','B. Thread','C. BLE Mesh','D. Z-Wave'],1,'Thread是唯一原生IPv6的'),
+    Q(8,'single',['A. 每层只添加协议头部不修改上层数据','B. 接收时去除本层头部后直接传递','C. 发送时本层PDU作为下层SDU交给下层','D. 接收时下层SDU作为本层PDU向上传递'],2,'PDU→作为下层SDU是封装的核心'),
+    Q(8,'multi',['A. 物理层','B. MAC层','C. 网络层','D. 传输层','E. 应用层'],[0,1],'物理层和MAC层合称底两层'),
+    Q(8,'multi',['A. SAP是相邻层之间交互的逻辑接口','B. 每一层通过SAP向上层提供服务','C. SAP在软件实现中体现为API函数','D. 不同协议栈的SAP定义完全相同','E. SAP决定了层与层之间的数据传递方式'],[0,1,2,4],'D错-不同协议栈SAP定义不同'),
+    Q(8,'multi',['A. 本层在数据包中添加的协议控制信息','B. 上层提供的服务原语','C. 对等层之间约定的协议规则','D. 下层提供的透明传输服务','E. 应用层直接交互'],[0,2,3],'水平通信=协议控制信息+协议规则+下层传输'),
+    Q(8,'multi',['A. ZigBee和Thread都使用IEEE 802.15.4作为底两层','B. Thread在网络层采用IPv6+6LoWPAN','C. BLE Mesh采用管理式泛洪而非路由','D. ZigBee应用层用ZCL，Thread可用CoAP','E. 三者都支持完全的IP互联'],[0,1,2,3],'E错-ZigBee和BLE Mesh不是原生IP协议'),
+  ]},
+  9:{ title:'IEEE 802.15.4标准', questions:[
+    Q(9,'single',['A. 8','B. 11','C. 16','D. 26'],2,'2.4GHz频段共16个信道'),
+    Q(9,'single',['A. 时隙CSMA-CA','B. 非时隙CSMA-CA','C. TDMA','D. FDMA'],1,'非信标网络采用非时隙CSMA-CA'),
+    Q(9,'single',['A. 信道访问控制','B. PAN的建立与维护','C. 端到端路由','D. 确认与重传'],2,'端到端路由是网络层的工作，不是MAC层'),
+    Q(9,'single',['A. 指示帧是否需要加密','B. 指示接收方是否需要回复确认帧','C. 指示帧是否为信标帧','D. 指示是否压缩PAN ID'],1,'AR位=确认请求位，决定是否需要ACK'),
+    Q(9,'single',['A. 接收方持续监听信道','B. 发送方在发送数据前先发送唤醒帧','C. 仅适用于信标网络','D. 不需要收发双方时间同步'],1,'CSL=发送方先发唤醒帧→接收方周期性唤醒'),
+    Q(9,'single',['A. Beacon Request','B. Association Request','C. Data Request','D. Orphan Notification'],1,'Association Request=设备请求加入网络'),
+    Q(9,'single',['A. 0','B. 1','C. 2','D. 3'],2,'非时隙CSMA-CA初始BE=2'),
+    Q(9,'multi',['A. 2.4GHz','B. 868MHz','C. 915MHz','D. 5GHz','E. 433MHz(部分版本)'],[0,1,2,4],'D错-802.15.4不用5GHz频段'),
+    Q(9,'multi',['A. 每次发送前需随机等待退避周期','B. 执行CCA判断信道是否空闲','C. 信道忙时增加退避指数并可能重试','D. 最多重试次数由macMaxCSMABackoffs决定','E. 算法中不使用退避计数器'],[0,1,2,3],'E错-退避计数器是核心变量'),
+    Q(9,'multi',['A. 信标帧','B. 数据帧','C. 确认帧','D. 命令帧','E. 路由帧'],[0,1,2,3],'MAC层四种帧类型，路由帧是网络层的'),
+    Q(9,'multi',['A. macPANId','B. macShortAddress','C. nwkNetworkAddress','D. macRxOnWhenIdle','E. macAutoRequest'],[0,1,3,4],'C是网络层PIB，不是MAC层'),
+    Q(9,'multi',['A. CSL让接收方周期性短暂唤醒采样','B. RIT由接收方主动发送请求','C. CSL仅适用于rx-on-when-idle设备','D. 隐式RIT在设备发送数据后自动开启接收窗口','E. 两种机制都适用于非信标网络'],[0,1,3,4],'C错-CSL适用于rx-off-when-idle设备'),
+  ]},
+  10:{ title:'ZigBee协议栈', questions:[
+    Q(10,'single',['A. 仅协调器','B. 协调器和路由器','C. 所有设备','D. 仅终端设备'],1,'协调器和路由器承担路由转发'),
+    Q(10,'single',['A. 每个设备只有64位IEEE地址','B. 短地址在设备入网时分配，全网唯一','C. 短地址固定不变','D. 广播地址使用0x0000'],1,'16位短地址入网时分配，全网唯一'),
+    Q(10,'single',['A. Route Request和Route Reply','B. Beacon Request和Beacon','C. Association Request和Response','D. Data Request和Data Confirm'],0,'AODV按需路由=RREQ+RREP'),
+    Q(10,'single',['A. Cluster是ZCL的基本功能单元','B. 每个Cluster包含属性和命令','C. 客户端持有状态，服务器操作状态','D. 通用命令包括Read/Write Attributes等'],2,'相反：服务器持有状态，客户端操作状态'),
+    Q(10,'single',['A. 端到端确认与重传','B. 绑定(Binding)管理','C. IP路由','D. 组地址过滤'],2,'APS不提供IP路由，IP路由是Thread的功能'),
+    Q(10,'single',['A. 认证新设备','B. 分发网络密钥','C. 加密应用层数据','D. 维护网络成员状态'],2,'信任中心不直接加密应用层数据'),
+    Q(10,'multi',['A. 协调器','B. 路由器','C. 终端设备','D. 边界路由器','E. 代理节点'],[0,1,2],'ZigBee三种基本角色'),
+    Q(10,'multi',['A. 网络形成与维护','B. 数据包的路由与转发','C. 信道访问控制','D. 地址分配与管理','E. 调制解调'],[0,1,3],'C是MAC层功能，E是物理层功能'),
+    Q(10,'multi',['A. Read Attributes','B. Write Attributes','C. Configure Reporting','D. Report Attributes','E. Discover Attributes'],[0,1,2,3,4],'ZCL五大通用命令全选'),
+    Q(10,'multi',['A. 绑定将源端点与目标端点基于ClusterId关联','B. 绑定表存储在发起绑定的设备中','C. 绑定后发送方无需知道目标网络地址','D. 绑定只能在同一设备内部建立','E. 绑定关系可通过ZDP命令远程建立'],[0,1,2,4],'D错-绑定可跨设备'),
+    Q(10,'multi',['A. 网络密钥','B. 链路密钥','C. 主密钥','D. 会话密钥','E. 公钥'],[0,1],'ZigBee核心密钥=网络密钥+链路密钥'),
+  ]},
+  11:{ title:'Z-Stack应用开发', questions:[
+    Q(11,'single',['A. nwk_event_loop','B. Hal_ProcessEvent','C. macEventLoop','D. zclSampleLight_event_loop'],2,'tasksArr中macEventLoop排第一'),
+    Q(11,'single',['A. 任务的初始化顺序可任意','B. 该函数在系统运行时可被多次调用','C. 它为tasksEvents数组动态分配内存并清零','D. 该函数由用户主函数直接调用'],2,'osalInitTasks()动态分配tasksEvents'),
+    Q(11,'single',['A. 设备的网络地址','B. 应用配置文件的ID(如HA配置文件0x0104)','C. 簇的ID','D. 端点的编号'],1,'AppProfId=应用规范ID，如HA=0x0104'),
+    Q(11,'single',['A. ZCL_CLUSTER_ID_GEN_BASIC','B. ZCL_CLUSTER_ID_GEN_ON_OFF','C. ZCL_CLUSTER_ID_GEN_LEVEL_CONTROL','D. ZCL_CLUSTER_ID_GEN_POLL_CONTROL'],3,'Poll Control不在zclSampleLight输入簇中'),
+    Q(11,'single',['A. 直接丢弃','B. 转发给ZDO任务','C. 封装成OSAL消息发送到该端点对应任务','D. 通过串口打印数据'],2,'AF层将数据封装为OSAL消息投递'),
+    Q(11,'single',['A. 注册应用属性列表供ZCL框架管理','B. 注册命令回调函数','C. 注册端点描述符','D. 初始化硬件外设'],0,'zcl_registerAttrList=注册属性列表'),
+    Q(11,'single',['A. 只包含端点号不包含任务ID','B. 必须包含简单描述符的指针','C. 通过afRegister()注册到AF框架','D. 用于定义ZDO的管理功能'],2,'endPointDesc_t通过afRegister()注册'),
+    Q(11,'single',['A. zclSampleLight_ProcessIncomingMsg','B. myIncomingData','C. zclSampleLight_HandleKeys','D. zclSampleLight_LcdDisplayUpdate'],0,'AF_INCOMING_MSG_CMD→ProcessIncomingMsg'),
+    Q(11,'single',['A. 0','B. 1','C. 5','D. 6'],0,'zclSampleLight输出簇数量=0'),
+    Q(11,'single',['A. zcl_registerCmdList','B. zcl_registerAttrList','C. zclGeneral_RegisterCmdCallbacks','D. afRegister'],1,'属性注册=zcl_registerAttrList'),
+    Q(11,'multi',['A. macEventLoop','B. nwk_event_loop','C. Hal_ProcessEvent','D. APS_event_loop','E. zclSampleLight_event_loop'],[0,1,2,3,4],'Z-Stack的tasksArr五类任务全选'),
+    Q(11,'multi',['A. EndPoint指定端点号','B. AppProfId是应用配置文件标识符','C. AppDeviceId指定设备类型','D. pAppInClusterList指向该端点能发送的簇','E. AppNumOutClusters表示输出簇数量'],[0,1,2,4],'D错-pAppInClusterList是输入簇(能接收的)'),
+    Q(11,'multi',['A. 定义并填充SimpleDescriptionFormat_t','B. 调用afRegister()注册端点描述符','C. 调用zcl_registerAttrList()注册属性列表','D. 调用zclGeneral_RegisterCmdCallbacks()','E. 调用osal_start_system()启动系统'],[0,1,2,3,4],'Z-Stack应用初始化五步全选'),
+    Q(11,'multi',['A. 端点号0预留给ZDO','B. 端点号255用于向所有活跃端点广播','C. 每个物理设备最多240个应用端点','D. 同一设备的不同端点可支持不同应用配置文件','E. 端点的简单描述符必须包含输入和输出簇列表'],[0,1,2,3],'E错-输出簇列表可以为空'),
+  ]},
+  12:{ title:'Thread协议', questions:[
+    Q(12,'single',['A. IPv4','B. IPv6','C. IPX','D. AppleTalk'],1,'Thread基于IPv6，6LoWPAN压缩'),
+    Q(12,'single',['A. 禁用信标模式','B. 移除PAN协调器角色','C. 增加CSL机制','D. 使用O-QPSK调制'],2,'CSL不是对802.15.4的裁剪，而是增强'),
+    Q(12,'single',['A. RLOC','B. EID','C. ALOC','D. MAC地址'],2,'ALOC任播定位符标识一组提供相同服务的设备'),
+    Q(12,'single',['A. Parent Request','B. Parent Response','C. Child ID Request','D. MLE Discovery Request'],2,'入网三步握手最后一步=Child ID Request'),
+    Q(12,'single',['A. MAC层使用AES-CCM-128加密','B. MLE消息使用独立MLE Key保护','C. 网络密钥无需派生','D. 帧计数器用于防止重放攻击'],2,'网络密钥需要派生更新'),
+    Q(12,'single',['A. Leader','B. Router','C. Border Router','D. REED'],2,'Border Router连接外部IP网络'),
+    Q(12,'multi',['A. RLOC(路由定位符)','B. EID(端点标识符)','C. ALOC(任播定位符)','D. MAC地址','E. PAN ID'],[0,1,2],'Thread网络层三种核心地址'),
+    Q(12,'multi',['A. FTD具备完整的路由与网络维护能力','B. MTD不参与路由不订阅全网多播','C. REED在路由器不足时可升级为路由器','D. SED始终保持射频接收器开启','E. SSED采用CSL与父节点同步'],[0,1,2,4],'D错-SED休眠，射频关闭'),
+    Q(12,'multi',['A. 邻居发现与链路建立','B. 网络参数同步','C. 父子关系绑定与维护','D. 网络角色发现与选举','E. 应用层数据加密'],[0,1,2,3],'E错-应用层数据加密用DTLS，不是MLE'),
+    Q(12,'multi',['A. 分区拥有独立的Leader和路由器ID池','B. 所有分区共享相同的网络安全凭证','C. 分区合并由MLE消息触发','D. 分区机制增强了网络鲁棒性','E. 分区合并后需重新分配所有地址'],[0,1,2,3],'E错-合并后保留地址'),
+  ]},
+  13:{ title:'BLE Mesh', questions:[
+    Q(13,'single',['A. 路由技术存在单点故障风险','B. 泛洪技术不依赖单一节点，天然避免单点故障','C. 路由可靠性高于泛洪','D. 泛洪仅适用于小规模网络'],1,'泛洪天然去中心化，无单点故障'),
+    Q(13,'single',['A. 中继节点','B. 友节点','C. 代理节点','D. 低功耗节点'],2,'代理节点转换GATT↔广播承载'),
+    Q(13,'single',['A. 单播地址由制造商固定分配','B. 组播地址包括预定义固定组和动态组','C. 虚拟地址是16位短地址','D. 所有节点必须用单播地址'],1,'组播地址=固定+动态'),
+    Q(13,'single',['A. 网络层','B. 下层传输层','C. 上层传输层','D. 访问层'],1,'下层传输层负责SAR分段重组'),
+    Q(13,'single',['A. 模型定义状态消息和行为','B. 服务器模型持有状态客户端不持有','C. 一个元素只能支持一个模型','D. 模型间可存在扩展关系'],2,'一个元素可支持多个模型'),
+    Q(13,'single',['A. AES-CCM','B. J-PAKE','C. ECDH','D. TLS'],1,'BLE Mesh配网认证用ECDH'),
+    Q(13,'multi',['A. 设备','B. 节点','C. 网络','D. 子网','E. 元素'],[0,1,2,3,4],'BLE Mesh五层基本构成全选'),
+    Q(13,'multi',['A. 中继特性可接收并转发消息扩展网络覆盖','B. 代理特性允许GATT设备与Mesh网络交互','C. 低功耗特性使节点可长时间关闭射频','D. 友节点特性为低功耗节点缓存消息','E. 所有节点必须同时启用所有特性'],[0,1,2,3],'E错-特性按需启用'),
+    Q(13,'multi',['A. 网络层','B. 上层传输层','C. 访问层','D. 基础模型层','E. 承载层'],[0,1,2],'网络层+上层传输层+访问层都有各自的加密'),
+    Q(13,'multi',['A. 扩展模型继承基础模型的所有状态消息和行为','B. 对应关系表示两个模型共享某些状态实例','C. 扩展模型只能增加新内容不能修改继承内容','D. 模型只能单独使用','E. 模型关系在编译时确定'],[0,1,2],'D错-可同时用扩展和对应；E错-可动态配置'),
+  ]}
+};
+
+// ==================== APP STATE ====================
+let currentChapter = null;
+let currentQIdx = 0;
+let userAnswers = [];   // array of { picked: Set of indices }
+let submitted = false;
+
+// ==================== RENDER CHAPTER GRID ====================
+function renderChapterGrid(){
+  const grid = document.getElementById('chapterGrid');
+  let html = '';
+  for(const [ch, data] of Object.entries(chapters)){
+    const single = data.questions.filter(q=>q.type==='single').length;
+    const multi = data.questions.filter(q=>q.type==='multi').length;
+    html += `<div class="chapter-card" onclick="selectChapter(${ch})" data-ch="${ch}">
+      <div class="ch-num">${ch}</div>
+      <div class="ch-title">${data.title}</div>
+      <div class="ch-count">单选${single} + 多选${multi}</div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+// ==================== SELECT CHAPTER ====================
+function selectChapter(ch){
+  currentChapter = ch;
+  currentQIdx = 0;
+  submitted = false;
+  const qs = chapters[ch].questions;
+  userAnswers = qs.map(q => ({ picked: new Set() }));
+
+  // highlight card
+  document.querySelectorAll('.chapter-card').forEach(c => c.classList.remove('active'));
+  const card = document.querySelector(`.chapter-card[data-ch="${ch}"]`);
+  if(card) card.classList.add('active');
+
+  document.getElementById('picker').style.display = 'none';
+  document.getElementById('quizSection').classList.add('visible');
+  document.getElementById('resultPage').classList.remove('visible');
+  document.getElementById('submitBtn').style.display = 'block';
+  renderQuestion();
+}
+
+// ==================== RENDER QUESTION ====================
+function renderQuestion(){
+  const qs = chapters[currentChapter].questions;
+  const q = qs[currentQIdx];
+  const total = qs.length;
+
+  // progress
+  document.getElementById('progressFill').style.width = ((currentQIdx+1)/total*100)+'%';
+  document.getElementById('progressLabel').textContent = (currentQIdx+1)+'/'+total;
+
+  // badge
+  const badge = document.getElementById('qBadge');
+  badge.textContent = q.type==='multi'?'多选题':'单选题';
+  badge.className = 'q-badge '+(q.type==='multi'?'multi':'single');
+
+  // index
+  document.getElementById('qIdx').textContent = `第 ${currentQIdx+1} 题 / 共 ${total} 题`;
+
+  // stem
+  document.getElementById('qStem').textContent = q.opts ? q.text : '';
+
+  // options
+  const optsDiv = document.getElementById('qOptions');
+  const letters = 'ABCDEFGH';
+  let html = '';
+  q.opts.forEach((opt, i) => {
+    const picked = userAnswers[currentQIdx].picked.has(i);
+    html += `<button class="opt-btn${picked?' picked':''}" onclick="pickOption(${i})">
+      <span class="opt-letter">${letters[i]}</span>
+      <span class="opt-text">${opt}</span>
+    </button>`;
+  });
+  optsDiv.innerHTML = html;
+
+  // nav
+  document.getElementById('prevBtn').disabled = currentQIdx === 0;
+  const isLast = currentQIdx === total - 1;
+  document.getElementById('nextBtn').textContent = isLast ? '最后一题 ✓' : '下一题 →';
+  document.getElementById('qCounter').textContent = `第${chapters[currentChapter].title}章`;
+
+  // scroll to top of question box
+  document.querySelector('.q-box').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function pickOption(i){
+  if(submitted) return;
+  const q = chapters[currentChapter].questions[currentQIdx];
+  const ua = userAnswers[currentQIdx];
+
+  if(q.type === 'single'){
+    // toggle or select
+    if(ua.picked.has(i)){ ua.picked.clear(); }
+    else { ua.picked.clear(); ua.picked.add(i); }
+  } else {
+    // multi: toggle
+    if(ua.picked.has(i)) ua.picked.delete(i);
+    else ua.picked.add(i);
+  }
+
+  // re-render options only
+  const optsDiv = document.getElementById('qOptions');
+  const letters = 'ABCDEFGH';
+  let html = '';
+  q.opts.forEach((opt, j) => {
+    const picked = ua.picked.has(j);
+    html += `<button class="opt-btn${picked?' picked':''}" onclick="pickOption(${j})">
+      <span class="opt-letter">${letters[j]}</span>
+      <span class="opt-text">${opt}</span>
+    </button>`;
+  });
+  optsDiv.innerHTML = html;
+}
+
+// ==================== NAVIGATION ====================
+function prevQ(){
+  if(currentQIdx > 0){ currentQIdx--; renderQuestion(); }
+}
+function nextQ(){
+  const total = chapters[currentChapter].questions.length;
+  if(currentQIdx < total - 1){ currentQIdx++; renderQuestion(); }
+}
+
+// ==================== KEYBOARD ====================
+document.addEventListener('keydown',e=>{
+  if(!currentChapter || submitted) return;
+  const q = chapters[currentChapter].questions[currentQIdx];
+  if(e.key === 'ArrowLeft') prevQ();
+  if(e.key === 'ArrowRight') nextQ();
+  const idx = 'abcdefgh'.indexOf(e.key.toLowerCase());
+  if(idx >= 0 && idx < q.opts.length) pickOption(idx);
+});
+
+// ==================== SUBMIT ====================
+function submitChapter(){
+  if(submitted) return;
+
+  // check if all answered
+  const unanswered = userAnswers.filter(ua => ua.picked.size === 0).length;
+  if(unanswered > 0){
+    if(!confirm(`还有 ${unanswered} 题未作答，确定提交吗？`)) return;
+  }
+
+  submitted = true;
+  document.getElementById('submitBtn').style.display = 'none';
+  document.getElementById('prevBtn').disabled = true;
+  document.getElementById('nextBtn').disabled = true;
+
+  const qs = chapters[currentChapter].questions;
+  let correct = 0;
+  const review = [];
+
+  qs.forEach((q, i) => {
+    const ua = userAnswers[i];
+    const picked = ua.picked;
+    let isCorrect = false;
+
+    if(q.type === 'single'){
+      const ans = Array.isArray(q.answer) ? q.answer[0] : q.answer;
+      isCorrect = picked.has(ans) && picked.size === 1;
+    } else {
+      const ansSet = new Set(q.answer);
+      isCorrect = picked.size === ansSet.size && [...picked].every(v => ansSet.has(v));
+    }
+
+    if(isCorrect) correct++;
+    review.push({
+      num: i+1,
+      type: q.type,
+      text: q.text,
+      opts: q.opts,
+      picked,
+      answer: q.answer,
+      hint: q.hint,
+      ok: isCorrect
+    });
+  });
+
+  // show result
+  showResult(correct, qs.length, review);
+}
+
+function showResult(correct, total, review){
+  document.getElementById('quizSection').classList.remove('visible');
+  const rp = document.getElementById('resultPage');
+  rp.classList.add('visible');
+  rp.scrollIntoView({behavior:'smooth'});
+
+  const pct = Math.round(correct/total*100);
+  document.getElementById('scoreNum').textContent = correct+'/'+total;
+
+  // ring
+  const canvas = document.getElementById('ringCanvas');
+  const ctx = canvas.getContext('2d');
+  const r = 60, cx = 70, cy = 70;
+  ctx.clearRect(0,0,140,140);
+  // bg
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.strokeStyle='#1e2130'; ctx.lineWidth=10; ctx.stroke();
+  // progress
+  const color = pct>=80?'#34d399':pct>=50?'#fbbf24':'#f87171';
+  const endAngle = -Math.PI/2 + (pct/100)*Math.PI*2;
+  ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,endAngle); ctx.strokeStyle=color; ctx.lineWidth=10; ctx.lineCap='round'; ctx.stroke();
+
+  // grade
+  let grade='', msg='';
+  if(pct>=90){ grade='🎉 优秀！'; msg='第'+currentChapter+'章知识掌握非常扎实。'; }
+  else if(pct>=70){ grade='👍 良好'; msg='基本掌握，建议回顾错题对应的知识点。'; }
+  else if(pct>=50){ grade='📖 还需努力'; msg='建议重新阅读本章PPTX讲义和PDF练习题。'; }
+  else{ grade='💪 继续加油'; msg='基础知识还需加强，从核心概念开始复习。'; }
+  document.getElementById('resultGrade').textContent = grade;
+  document.getElementById('resultMsg').textContent = msg;
+
+  // review
+  const letters = 'ABCDEFGH';
+  let rv = '';
+  review.forEach(r => {
+    const userStr = [...r.picked].map(i=>letters[i]).join('')||'未选';
+    const ansStr = (Array.isArray(r.answer)?r.answer:[r.answer]).map(i=>letters[i]).join('');
+    rv += `<div class="review-item">
+      <div class="ri-mark ${r.ok?'ok':'err'}">${r.ok?'✓':'✗'}</div>
+      <div>
+        <strong>${r.type==='multi'?'[多选]':'[单选]'} 第${r.num}题</strong>
+        ${r.ok?'<span style="color:var(--green)"> ✅ 正确答案：'+ansStr+'</span>':
+          '<span style="color:var(--red)"> ❌ 你的答案：'+userStr+' → 正确答案：'+ansStr+'</span>'}
+        <div style="color:var(--muted);margin-top:2px">💡 ${r.hint}</div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('reviewList').innerHTML = rv;
+}
+
+// ==================== BACK / RETRY ====================
+function goBack(){
+  submitted = false;
+  currentChapter = null;
+  document.getElementById('picker').style.display = 'block';
+  document.getElementById('quizSection').classList.remove('visible');
+  document.getElementById('resultPage').classList.remove('visible');
+  document.getElementById('submitBtn').style.display = 'none';
+  document.querySelectorAll('.chapter-card').forEach(c=>c.classList.remove('active'));
+}
+
+function retryChapter(){
+  const ch = currentChapter;
+  goBack();
+  setTimeout(()=>selectChapter(ch),100);
+}
+
+// init
+renderChapterGrid();
+</script>
+</body>
+</html>
