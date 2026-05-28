@@ -6,7 +6,7 @@
 
 | 文件 | 内容 |
 |------|------|
-| [index.html](./index.html) | 🔥 v3 四面板：总览仪表盘 + 知识点速记 + 章节测试 + 学习曲线 · LocalStorage持久化 |
+| 课程简介| 🔥 v3 四面板：总览仪表盘 + 知识点速记 + 章节测试 + 学习曲线 · LocalStorage持久化 |
 | [Day01-CC2530架构与GPIO中断.md](./Day01-CC2530架构与GPIO中断.md) | CC2530 电气特性、四个内存空间、Flash 写入、中断 5 步、GPIO 三寄存器 |
 | Day02（待更新） | 电源管理 + UART + Timer + ADC |
 | Day03（待更新） | OSAL 操作系统抽象层 |
